@@ -127,7 +127,9 @@ wgm_sci_age$AgeRange<-factor(wgm_sci_age$AgeRange,
                              levels = c("50+","30 to 49","15 to 29"))
 ```
 
-## Leaflet Map
+# Country Map
+
+## Animated Plot
 
 ```{r}
 #| label: leaflet-map
@@ -159,7 +161,7 @@ mytext<-paste(
 #Display map
 leaflet(wgm_sf)%>%
   addTiles()%>%
-  setView(lat=0,lng=0,zoom=0.5)%>%
+  setView(lat=0,lng=0,zoom=2)%>%
   addPolygons(fillColor = ~mypalette(KnowLevel),stroke = F,
               label=mytext,fillOpacity = 0.9)%>%
   addLegend(pal = mypalette,values=~KnowLevel,
@@ -167,7 +169,7 @@ leaflet(wgm_sf)%>%
             opacity=0.9)
 ```
 
-## Animated Map
+# Region and Age
 
 ```{r}
 #| label: animate-map
@@ -193,3 +195,13 @@ ggplot(wgm_sci_age,aes(Prop*100,Region,fill=AgeRange),color="black")+
   shadow_mark()+
   enter_fade()
 ```
+
+## Overview {.tabset}
+
+### Region Stats
+
+Display some stats by region, or description of which country is in each region
+
+### Age Stats
+
+Display some stats by age range, include the takeaway that younger people have a higher self-perception of scientific knowledge
