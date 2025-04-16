@@ -1,0 +1,195 @@
+---
+title: "Wellcome Dashboard"
+author: "Nicholas Soares"
+format: 
+  dashboard: 
+    orientation: columns
+    nav-buttons: [github, linkedin]
+    github: https://github.com/nasoares/lab-3
+    linkedin: https://www.linkedin.com/in/nicholas-soares-795a23290/
+logo: images/wellcome_logo.png
+editor: visual
+---
+
+```{r}
+#| label: load-packages
+#| message: false
+library(tidyverse)
+library(gt)
+library(readxl)
+library(ggridges)
+library(RColorBrewer)
+library(leaflet)
+library(sf)
+library(viridisLite)
+library(gganimate)
+```
+
+```{r}
+#| label: prep-data
+#| message: false
+#| warning: false
+
+#Loading spreadsheets
+wgm<-read_xlsx("data/wgm2018-dataset-crosstabs-all-countries.xlsx",
+               sheet="Full dataset")
+notes<-read_xlsx("data/wgm2018-dataset-crosstabs-all-countries.xlsx",
+                 sheet="Data dictionary")
+
+#creating a new, filtered data frame
+wgm_filt<-wgm|>
+  select(c(WP5,wgt,PROJWT,FIELD_DATE,YEAR_CALENDAR,
+           Q1,AgeCategories,Regions_Report))
+
+#Handling the country codes
+countries<-t(str_split(notes[1,3],',',simplify = T))
+countryCode<-str_split(countries,"=",simplify=T)
+countryCode<-as.data.frame(countryCode)
+colnames(countryCode)<-c("WP5","Country")
+countryCode$WP5<-as.numeric(countryCode$WP5)
+
+#Handling the region codes
+regions<-t(str_split(notes[57,3],',',simplify=T))
+regionCode<-str_split(regions,"=",simplify=T)
+regionCode<-as.data.frame(regionCode)
+colnames(regionCode)<-c("Regions_Report","Region")
+regionCode$Regions_Report<-as.numeric(regionCode$Regions_Report)
+
+#Merging country and region names
+wgm_merge<-left_join(wgm_filt,countryCode)
+wgm_merge<-left_join(wgm_merge,regionCode)
+
+wgm_country2<-wgm_merge|>
+  group_by(Country)|>
+  summarize(Total=n())#total records from each country
+
+### Preparing Leaflet Map Data ###
+wgm_sci<-wgm_merge|>
+  mutate(SciKnow=case_when(
+    Q1 <= 2 ~ "Lots",
+    Q1 >= 3 ~ "NotLots"
+  ))
+
+#Grouping by country for plotting
+wgm_sci_country<-wgm_sci|>
+  group_by(Country,SciKnow)|>
+  summarize(Count=n())#grouping by scientific knowledge
+wgm_sci_country<-left_join(wgm_sci_country,wgm_country2)
+
+#Calculation of proportions
+wgm_sci_props<-wgm_sci_country|>
+  mutate(Prop=Count/Total*100)|>
+  filter(SciKnow=="Lots")|>
+  select(Country,Prop)
+colnames(wgm_sci_props)<-c("NAME","KnowLevel")
+
+### Preparing Animated Plot Data ###
+wgm_sci_region<-wgm_sci|>
+  filter(!is.na(AgeCategories))|>
+  group_by(Region,AgeCategories,SciKnow)|>
+  summarize(Count=n())#grouping by scientific knowledge
+wgm_sci_region2<-wgm_sci|>
+  filter(!is.na(AgeCategories))|>
+  group_by(Region,AgeCategories)|>
+  summarize(Total=n())
+wgm_sci_region<-left_join(wgm_sci_region,wgm_sci_region2)
+
+#Calculation of proportions by age range and region
+wgm_sci_age<-wgm_sci_region|>
+  mutate(Prop=Count/Total)|>
+  filter(SciKnow=="Lots"&Region!="Not assigned")|>
+  select(Region,AgeCategories,Prop)
+
+#Calculating World totals
+world_age_totals<-wgm_sci_age|>
+  group_by(AgeCategories)|>
+  summarize(Prop=mean(Prop))|>
+  mutate(Region="World")|>
+  relocate(Region,.before=AgeCategories)
+wgm_sci_age<-rbind(wgm_sci_age,world_age_totals)
+
+#Factoring Region and Age Range for plotting order
+wgm_sci_age$Region<-factor(wgm_sci_age$Region,
+                           levels = c("World","Eastern Africa","Central Africa",
+                                      "North Africa","Southern Africa","Western Africa",
+                                      "Central America and Mexico","Northern America",
+                                      "South America","Central Asia","East Asia",
+                                      "Southeast Asia","South Asia","Middle East",
+                                      "Eastern Europe","Northern Europe","Southern Europe",
+                                      "Western Europe","Aus/NZ"))
+wgm_sci_age<-wgm_sci_age|>
+  mutate(AgeRange=case_when(
+    AgeCategories == 1 ~ "15 to 29",
+    AgeCategories == 2 ~ "30 to 49",
+    AgeCategories == 3 ~ "50+"
+  ))
+wgm_sci_age$AgeRange<-factor(wgm_sci_age$AgeRange,
+                             levels = c("50+","30 to 49","15 to 29"))
+```
+
+## Leaflet Map
+
+```{r}
+#| label: leaflet-map
+#| message: false
+#| warning: false
+
+#Loading in shapefile of countries for chloropleth map
+#following guidelines outlined in https://r-graph-gallery.com/183-choropleth-map-with-leaflet.html
+world_sf<-read_sf("data/TM_WORLD_BORDERS_SIMPL-0.3.shp")
+
+wgm_sf<-world_sf|>
+  filter(NAME %in% unique(wgm_sci_props$NAME))
+wgm_sf<-left_join(wgm_sf,wgm_sci_props)
+
+#Creating a color palette to display data
+mypalette<-colorNumeric(
+  palette="viridis",domain=wgm_sf$KnowLevel,
+  na.color="transparent"
+)
+
+#Text labels
+mytext<-paste(
+  "Country: ",wgm_sf$NAME,"<br/>",
+  "Knowledge Level: ",round(wgm_sf$KnowLevel,0),"%","</br>",
+  sep=""
+)%>%
+  lapply(htmltools::HTML)
+
+#Display map
+leaflet(wgm_sf)%>%
+  addTiles()%>%
+  setView(lat=0,lng=0,zoom=0.5)%>%
+  addPolygons(fillColor = ~mypalette(KnowLevel),stroke = F,
+              label=mytext,fillOpacity = 0.9)%>%
+  addLegend(pal = mypalette,values=~KnowLevel,
+            title="Knowledge Level",position = "bottomleft",
+            opacity=0.9)
+```
+
+## Animated Map
+
+```{r}
+#| label: animate-map
+#| message: false
+#| warning: false
+
+#Plotting with gganimate
+ggplot(wgm_sci_age,aes(Prop*100,Region,fill=AgeRange),color="black")+
+  geom_bar(stat="identity",position = "dodge")+
+  scale_y_discrete(limits=rev)+
+  scale_fill_manual(values=c("#003366","#33CCCC","#FFCC00"))+ #liked the color scheme of the original plot
+  labs(x=NULL,y=NULL,title="Perceived knowledge about science by region and age group")+
+  theme_minimal()+
+  theme(legend.position = c(0.85,0.8),
+        panel.grid.minor.x = element_blank(),
+        panel.grid.major.y = element_blank(),
+        text = element_text(size=12),
+        panel.background = element_rect(fill = "beige",color = "beige"),
+        plot.background = element_rect(fill="beige",color="beige"),
+        panel.grid.major.x = element_line(linetype = "dashed",colour = "grey"),
+        plot.title.position = "plot")+
+  transition_states(Region,wrap=F)+
+  shadow_mark()+
+  enter_fade()
+```
