@@ -1,0 +1,4 @@
+- source: wellcome_dashboard.qmd
+  quarto-pub:
+    - id: 34103342-0b2c-4ee7-8b67-8a5da9f560b1
+      url: 'https://nasoares.quarto.pub/wellcome-global-monitor-2018'
