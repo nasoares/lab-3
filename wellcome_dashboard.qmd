@@ -17,6 +17,7 @@ editor: visual
 #| message: false
 library(tidyverse)
 library(gt)
+library(gtExtras)
 library(readxl)
 library(ggridges)
 library(RColorBrewer)
@@ -237,16 +238,24 @@ ggplot(wgm_sci_age,aes(Prop,Region,fill=AgeRange),color="black")+
         panel.background = element_rect(fill = "#faf9f6",color = "#faf9f6"),
         plot.background = element_rect(fill="#faf9f6",color="#faf9f6"),
         panel.grid.major.x = element_line(linetype = "dashed",colour = "grey"),
-        plot.title.position = "plot")#+
-  #transition_states(Region,wrap=F)+
-  #shadow_mark()+
-  #enter_fade()
+        plot.title.position = "plot")+
+  transition_states(Region,wrap=F)+
+  shadow_mark()+
+  enter_fade()
 ```
 
-## Overview {.tabset width="40%"}
+## Overview 
+
+### Summary
+
+All data displayed on this dashboard comes from Chapter 2 of the [2018 Wellcome Global Monitor Report](https://cms.wellcome.org/sites/default/files/wellcome-global-monitor-2018.pdf), entitled "Understanding and interest in science and health".
+
+The primary metric used in this chapter of the report is "Knowledge Level", defined as the percentage of people who answered 'a lot' or 'some' in response to the question: *How much do you know about science? Do you know a lot, some, not much, or nothing at all?*
+
+### Tabset {.tabset width="40%"}
 
 ::: {.card title="Age Summary"}
-Display some stats by age range, include the takeaway that younger people have a higher self-perception of scientific knowledge
+Age ranges sorted in descending order of knowledge level (%). In general, a higher percentage of 15-29 year olds across all regions self-report a higher level of scientific knowledge than the older age groups.
 
 ```{r}
 #| label: age-table
@@ -259,13 +268,14 @@ age_table<-wgm_sci_age|>
   select(AgeRange,Percentage)|>
   gt()|>  
   cols_align(align="left",
-             columns = c("AgeRange","Percentage"))
+             columns = c("AgeRange","Percentage"))|>
+  gt_theme_guardian()
 age_table
 ```
 :::
 
 ::: {.card title="Region Summary"}
-Display some stats by region, or description of which country is in each region
+Regions sorted in descending order of knowledge level (%). The list of countries belonging to each region have been defined on page 
 
 ```{r}
 #| label: region-table
@@ -278,7 +288,8 @@ region_table<-wgm_sci_age|>
   select(Region,Percentage)|>
   gt()|>
   cols_align(align="left",
-             columns = c("Region","Percentage"))
+             columns = c("Region","Percentage"))|>
+  gt_theme_guardian()
 region_table
 ```
 :::
