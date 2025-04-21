@@ -244,7 +244,7 @@ ggplot(wgm_sci_age,aes(Prop,Region,fill=AgeRange),color="black")+
   enter_fade()
 ```
 
-## Overview 
+## Overview
 
 ### Summary
 
@@ -255,7 +255,7 @@ The primary metric used in this chapter of the report is "Knowledge Level", defi
 ### Tabset {.tabset width="40%"}
 
 ::: {.card title="Age Summary"}
-Age ranges sorted in descending order of knowledge level (%). In general, a higher percentage of 15-29 year olds across all regions self-report a higher level of scientific knowledge than the older age groups.
+Age ranges sorted in descending order of knowledge level (%). In general, a higher percentage of 15-29 year olds across all regions self-report having 'a lot' or 'some' scientific knowledge compared to the older age groups.
 
 ```{r}
 #| label: age-table
@@ -275,7 +275,7 @@ age_table
 :::
 
 ::: {.card title="Region Summary"}
-Regions sorted in descending order of knowledge level (%). The list of countries belonging to each region have been defined on page 
+Regions sorted in descending order of knowledge level (%). The list of countries belonging to each region have been defined on page
 
 ```{r}
 #| label: region-table
