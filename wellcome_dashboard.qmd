@@ -1,12 +1,13 @@
 ---
-title: "Wellcome Dashboard"
-author: "Nicholas Soares"
+title: "Wellcome Global Monitor 2018"
+subtitle: "Measuring Knowledge of Science"
 format: 
   dashboard: 
     orientation: columns
     nav-buttons: [github, linkedin]
     github: https://github.com/nasoares/lab-3
     linkedin: https://www.linkedin.com/in/nicholas-soares-795a23290/
+    theme: sandstone
 logo: images/wellcome_logo.png
 editor: visual
 ---
@@ -23,6 +24,8 @@ library(leaflet)
 library(sf)
 library(viridisLite)
 library(gganimate)
+library(scales)
+library(fontawesome)
 ```
 
 ```{r}
@@ -127,12 +130,13 @@ wgm_sci_age$AgeRange<-factor(wgm_sci_age$AgeRange,
                              levels = c("50+","30 to 49","15 to 29"))
 ```
 
-# Country Map
+# Results by Country
 
-## Animated Plot
+## Column - Leaflet Map {width="70%"}
 
 ```{r}
 #| label: leaflet-map
+#| title: "Perceived Knowledge About Science By Country"
 #| message: false
 #| warning: false
 
@@ -165,43 +169,116 @@ leaflet(wgm_sf)%>%
   addPolygons(fillColor = ~mypalette(KnowLevel),stroke = F,
               label=mytext,fillOpacity = 0.9)%>%
   addLegend(pal = mypalette,values=~KnowLevel,
-            title="Knowledge Level",position = "bottomleft",
-            opacity=0.9)
+            title="Self-Reported </br> Knowledge Level (%)",position = "bottomleft",
+            opacity=0.9,labFormat = labelFormat(suffix = "%"))
 ```
 
-# Region and Age
+## Column - Data Cards {width="30%"}
+
+```{r}
+#| label: quick-stats
+
+knowlevel_high<-wgm_sf|>
+  select(NAME,KnowLevel)|>
+  slice_max(order_by = KnowLevel)
+
+knowlevel_low<-wgm_sf|>
+  select(NAME,KnowLevel)|>
+  slice_min(order_by = KnowLevel)
+```
+
+::: {.valuebox icon="globe2" color="#5DC863"}
+Average of Surveyed Countries:
+
+`{r} round(mean(wgm_sf$KnowLevel),1)`
+:::
+
+::: {.valuebox icon="globe-americas" color="#FDE725"}
+Highest Knowledge of Science:
+
+`{r} round(knowlevel_high$KnowLevel,0)`
+
+`{r} knowlevel_high$NAME`
+:::
+
+::: {.valuebox icon="globe-europe-africa" color="#21908C"}
+Lowest Knowledge of Science:
+
+`{r} round(knowlevel_low$KnowLevel,0)`
+
+`{r} knowlevel_low$NAME`
+:::
+
+# Results by Region and Age
+
+## Column - animated plot {width="60%"}
 
 ```{r}
 #| label: animate-map
+#| title: "Perceived Knowledge About Science By Region and Age Group"
 #| message: false
 #| warning: false
+#| fig-width: 15
+#| fig-height: 10
 
 #Plotting with gganimate
-ggplot(wgm_sci_age,aes(Prop*100,Region,fill=AgeRange),color="black")+
+ggplot(wgm_sci_age,aes(Prop,Region,fill=AgeRange),color="black")+
   geom_bar(stat="identity",position = "dodge")+
   scale_y_discrete(limits=rev)+
-  scale_fill_manual(values=c("#003366","#33CCCC","#FFCC00"))+ #liked the color scheme of the original plot
-  labs(x=NULL,y=NULL,title="Perceived knowledge about science by region and age group")+
+  scale_fill_manual(values=c("#003366","#33CCCC","#FFCC00"),
+                    guide=guide_legend(reverse = T))+ #liked the color scheme of the original plot
+  scale_x_continuous(labels = scales::percent_format(accuracy = 1))+
+  labs(x=NULL,y=NULL,title=NULL)+
   theme_minimal()+
   theme(legend.position = c(0.85,0.8),
         panel.grid.minor.x = element_blank(),
         panel.grid.major.y = element_blank(),
-        text = element_text(size=12),
-        panel.background = element_rect(fill = "beige",color = "beige"),
-        plot.background = element_rect(fill="beige",color="beige"),
+        text = element_text(size=20),
+        panel.background = element_rect(fill = "#faf9f6",color = "#faf9f6"),
+        plot.background = element_rect(fill="#faf9f6",color="#faf9f6"),
         panel.grid.major.x = element_line(linetype = "dashed",colour = "grey"),
-        plot.title.position = "plot")+
-  transition_states(Region,wrap=F)+
-  shadow_mark()+
-  enter_fade()
+        plot.title.position = "plot")#+
+  #transition_states(Region,wrap=F)+
+  #shadow_mark()+
+  #enter_fade()
 ```
 
-## Overview {.tabset}
+## Overview {.tabset width="40%"}
 
-### Region Stats
+::: {.card title="Age Summary"}
+Display some stats by age range, include the takeaway that younger people have a higher self-perception of scientific knowledge
 
+```{r}
+#| label: age-table
+
+age_table<-wgm_sci_age|>
+  group_by(AgeRange)|>
+  summarize(Prop=mean(Prop))|>
+  arrange(desc(Prop))|>
+  mutate(Percentage=paste(round(Prop,2)*100,"%",sep=""))|>
+  select(AgeRange,Percentage)|>
+  gt()|>  
+  cols_align(align="left",
+             columns = c("AgeRange","Percentage"))
+age_table
+```
+:::
+
+::: {.card title="Region Summary"}
 Display some stats by region, or description of which country is in each region
 
-### Age Stats
+```{r}
+#| label: region-table
 
-Display some stats by age range, include the takeaway that younger people have a higher self-perception of scientific knowledge
+region_table<-wgm_sci_age|>
+  group_by(Region)|>
+  summarize(Prop=mean(Prop))|>
+  arrange(desc(Prop))|>
+  mutate(Percentage=paste(round(Prop,2)*100,"%",sep=""))|>
+  select(Region,Percentage)|>
+  gt()|>
+  cols_align(align="left",
+             columns = c("Region","Percentage"))
+region_table
+```
+:::
